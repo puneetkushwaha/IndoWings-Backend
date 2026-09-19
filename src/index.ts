@@ -32,7 +32,22 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/delivery', deliveryRoutes);
 
-// Health check endpoint
+// Root & Health check endpoints
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    message: 'IndoWings Drone Operations & Delivery API Gateway',
+    version: '3.4.4',
+    endpoints: {
+      health: '/api/health',
+      analytics: '/api/delivery/analytics',
+      feedbacks: '/api/delivery/feedbacks',
+      orders: '/api/delivery/orders',
+      fleet: '/api/fleet'
+    }
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
