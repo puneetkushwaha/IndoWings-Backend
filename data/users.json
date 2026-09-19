@@ -1,0 +1,58 @@
+[
+  {
+    "id": "ADMIN-001",
+    "name": "Puneet Kushwaha",
+    "email": "puneet@indowings.com",
+    "phone": "+919999999999",
+    "role": "admin",
+    "created_at": "2026-09-19T03:47:31.825Z"
+  },
+  {
+    "id": "CUST-1789789689554",
+    "name": "Puneet Test",
+    "email": "puneet.test@indowings.com",
+    "phone": "+91 9876543210",
+    "role": "customer",
+    "created_at": "2026-09-19T03:48:09.554Z"
+  },
+  {
+    "id": "CUST-1789792128023",
+    "name": "Puneet Kushwaha",
+    "email": "puneetkushwaha88@gmail.com",
+    "phone": "+91 7380663685",
+    "role": "customer",
+    "created_at": "2026-09-19T04:28:48.023Z",
+    "saved_addresses": [
+      {
+        "id": "addr-1",
+        "label": "Home",
+        "full_address": "B-142, Sector 62, Noida, UP",
+        "landmark": "Near Fortis Hospital",
+        "city": "Noida",
+        "pincode": "201301",
+        "is_default": true,
+        "recipient_name": "Puneet Kushwaha",
+        "recipient_phone": "7380663685"
+      },
+      {
+        "id": "addr-2",
+        "label": "Office",
+        "full_address": "IndoWings Flight Hub, Sector 63, Noida, UP",
+        "landmark": "Near Electronic City Metro",
+        "city": "Noida",
+        "pincode": "201307",
+        "is_default": false,
+        "recipient_name": "HQ Operations Team",
+        "recipient_phone": "9999999999"
+      }
+    ]
+  },
+  {
+    "id": "CUST-1789792454843",
+    "name": "puneetkushwaha9452",
+    "email": "puneetkushwaha9452@gmail.com",
+    "phone": "+91 7380663685",
+    "role": "customer",
+    "created_at": "2026-09-19T04:34:14.843Z"
+  }
+]
