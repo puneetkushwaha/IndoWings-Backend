@@ -21,7 +21,7 @@ const smtpTransporter = nodemailer.createTransport({
 // Generic email sender with auto-fallback
 export async function sendEmail({ to, subject, text, html }: { to: string; subject: string; text: string; html?: string }) {
   if (!to || !to.includes('@')) {
-    console.log(`⚠️ [Email Skipped] Invalid destination: ${to}`);
+    console.log(`[mail] Skipped invalid destination: Invalid destination: ${to}`);
     return;
   }
 
@@ -36,14 +36,14 @@ export async function sendEmail({ to, subject, text, html }: { to: string; subje
     });
 
     if (data && !error) {
-      console.log(`📧 [Email Sent via Resend] To: ${to} | Subject: "${subject}" (ID: ${data.id})`);
+      console.log(`[mail] Sent via Resend: To: ${to} | Subject: "${subject}" (ID: ${data.id})`);
       return;
     }
     if (error) {
-      console.warn(`⚠️ [Resend Note]: ${error.message}. Trying SMTP fallback...`);
+      console.warn(`[mail] Resend notice: ${error.message}. Trying SMTP fallback...`);
     }
   } catch (err: any) {
-    console.warn(`⚠️ [Resend Exception]: ${err.message}. Trying SMTP fallback...`);
+    console.warn(`[mail] Resend error: ${err.message}. Trying SMTP fallback...`);
   }
 
   // 2. Fallback to Gmail SMTP
@@ -55,9 +55,9 @@ export async function sendEmail({ to, subject, text, html }: { to: string; subje
       text,
       html: html || undefined,
     });
-    console.log(`📧 [Email Sent via Gmail SMTP] To: ${to} | Subject: "${subject}" (MessageID: ${info.messageId})`);
+    console.log(`[mail] Sent via SMTP: To: ${to} | Subject: "${subject}" (MessageID: ${info.messageId})`);
   } catch (smtpErr: any) {
-    console.error(`❌ [Email Error] Could not send email via Resend or SMTP:`, smtpErr.message);
+    console.error(`[mail] Failed to send: Could not send email via Resend or SMTP:`, smtpErr.message);
   }
 }
 
@@ -116,7 +116,7 @@ Sector 62, Noida, Uttar Pradesh
         console.log(`📱 [Fast2SMS Gateway] SMS OTP ${otp} dispatched to +91 ${phone}`);
       }
     } catch (err: any) {
-      console.warn(`⚠️ [SMS Gateway Warning]: ${err.message}`);
+      console.warn(` [SMS Gateway Warning]: ${err.message}`);
     }
   }
 }
@@ -223,11 +223,11 @@ export async function sendOrderStatusEmail(order: any, newStatus: string) {
     'on-hold': 'ON HOLD ⏸️',
     'in-flight': 'DISPATCHED & IN-FLIGHT ✈️',
     'delivered': 'DELIVERED SUCCESSFULLY ✅',
-    'failed': 'DELIVERY FAILED / RETURNED ❌',
+    'failed': 'DELIVERY FAILED / RETURNED ',
     'rescheduled': 'RESCHEDULED 🔄',
     'approaching': 'APPROACHING DROP ZONE 📍',
     'taking-off': 'UAV TAKING OFF 🛫',
-    'cancelled': 'ORDER CANCELLED ❌'
+    'cancelled': 'ORDER CANCELLED '
   };
 
   const currentLabel = statusLabels[newStatus] || newStatus.toUpperCase();

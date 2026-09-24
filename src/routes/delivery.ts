@@ -18,24 +18,25 @@ const JWT_SECRET = process.env.JWT_SECRET || 'indowings_command_center_secret_20
 const SH_SB_URL = process.env.SERVICEHUB_SUPABASE_URL || 'https://tpypyxuvmtzhoncasiln.supabase.co';
 const SH_SB_KEY = process.env.SERVICEHUB_SUPABASE_ANON_KEY || '';
 const serviceHubOtpClient = (SH_SB_URL && SH_SB_KEY) ? createClient(SH_SB_URL, SH_SB_KEY) : null as any;
-if (SH_SB_URL) console.log('📱 [SMS Gateway] ServiceHub Supabase Phone OTP Service Linked:', SH_SB_URL);
+if (SH_SB_URL) console.log('[sms] ServiceHub Supabase Phone OTP Service Linked:', SH_SB_URL);
 
-let razorpayInstance: any = null;
+let razorpayInstance: Razorpay | null = null;
 try {
   const key_id = process.env.RAZORPAY_KEY_ID || '';
   const key_secret = process.env.RAZORPAY_KEY_SECRET || '';
   if (key_id && key_secret) {
-    razorpayInstance = new (Razorpay as any)({
+    razorpayInstance = new Razorpay({
       key_id,
       key_secret
     });
-    console.log('💳 [Payment] Razorpay Gateway Initialized');
+    console.log('[payment] Razorpay Gateway Initialized');
   }
-} catch (err: any) {
-  console.warn('⚠️ Razorpay initialization warning:', err.message);
+} catch (err: unknown) {
+  const msg = err instanceof Error ? err.message : String(err);
+  console.warn('[payment] Razorpay init warning:', msg);
 }
 
-// ── 1. AUTH: Send OTP (Email or Real Phone via ServiceHub Gateway) ──────────
+// Auth: Send OTP verification code
 router.post('/auth/send-otp', async (req, res) => {
   const { phone, email, name } = req.body;
   if (!phone && !email) {
@@ -59,12 +60,7 @@ router.post('/auth/send-otp', async (req, res) => {
   if (isEmail && cleanEmail) {
     fileDB.saveOTP(cleanEmail, otp, { name, email: cleanEmail });
 
-    console.log(`\n========================================================`);
-    console.log(`📧 [IndoWings Email OTP Gateway]`);
-    console.log(`📬 Target Email: ${cleanEmail}`);
-    console.log(`🔑 Verification OTP: [ ${otp} ]`);
-    console.log(`⏰ Valid for: 10 minutes`);
-    console.log(`========================================================\n`);
+    console.log(`[auth] Email OTP dispatched to ${cleanEmail}`);
 
     sendOtpNotification({ email: cleanEmail, otp }).catch(err => console.error('Email OTP error:', err));
 
@@ -80,25 +76,22 @@ router.post('/auth/send-otp', async (req, res) => {
   const fullPhone = `+91${cleanPhone}`;
   fileDB.saveOTP(cleanPhone, otp, { name, email: cleanEmail, phone: fullPhone });
 
-  console.log(`\n========================================================`);
-  console.log(`📲 [SMS Dispatch] Target Mobile: ${fullPhone}`);
-  console.log(`🔑 Verification OTP: [ ${otp} ]`);
-  console.log(`⏰ Valid for: 10 minutes`);
+  console.log(`[auth] SMS OTP dispatched to ${fullPhone}`);
 
   try {
     const { data: sbData, error: sbError } = await serviceHubOtpClient.auth.signInWithOtp({
       phone: fullPhone
     });
     if (sbError) {
-      console.warn(`⚠️ [SMS Dispatch Warning]:`, sbError.message);
+      console.warn(`[sms] Dispatch warning:`, sbError.message);
     } else {
-      console.log(`✅ [SMS Dispatch Gateway] Real SMS OTP dispatched directly to mobile phone ${fullPhone}!`);
+      console.log(`[sms] Dispatched SMS to ${fullPhone}!`);
     }
   } catch (err: any) {
-    console.warn(`⚠️ [SMS Dispatch Exception]:`, err.message);
+    console.warn(`[sms] Dispatch error:`, err.message);
   }
 
-  console.log(`========================================================\n`);
+  
 
   if (cleanEmail) {
     sendOtpNotification({ email: cleanEmail, phone: cleanPhone, otp }).catch(err => console.error('OTP email error:', err));
@@ -112,7 +105,7 @@ router.post('/auth/send-otp', async (req, res) => {
   });
 });
 
-// ── 2. AUTH: Verify OTP (Email or Phone) & Create/Login Account ─────────────
+// Auth: Verify OTP and login / create account
 router.post('/auth/verify-otp', async (req, res) => {
   const { phone, email, otp, name } = req.body;
   if ((!phone && !email) || !otp) {
@@ -137,11 +130,11 @@ router.post('/auth/verify-otp', async (req, res) => {
         type: 'sms'
       });
       if (!sbErr && sbVerify?.user) {
-        console.log(`✅ [ServiceHub SMS Verified] Phone OTP Verified Successfully for ${fullPhone}`);
+        console.log(`[auth] Phone OTP verified for ${fullPhone}`);
         isValid = true;
       }
     } catch (err: any) {
-      console.warn(`⚠️ [ServiceHub Supabase Verify Exception]:`, err.message);
+      console.warn(`[auth] SMS verification exception:`, err.message);
     }
 
     // Fallback to local session
@@ -150,7 +143,7 @@ router.post('/auth/verify-otp', async (req, res) => {
       if (localPhoneRes.valid) {
         isValid = true;
         meta = localPhoneRes.meta;
-        console.log(`✅ [IndoWings Session] Phone OTP Verified Successfully for ${cleanPhone}`);
+        console.log(`[auth] Session verified for ${cleanPhone}`);
       }
     }
   }
@@ -161,7 +154,7 @@ router.post('/auth/verify-otp', async (req, res) => {
     if (localEmailRes.valid) {
       isValid = true;
       meta = localEmailRes.meta;
-      console.log(`✅ [Email OTP Verified] Code Verified Successfully for ${cleanEmail}`);
+      console.log(`[auth] Email OTP verified for ${cleanEmail}`);
     }
   }
 
@@ -203,7 +196,7 @@ router.post('/auth/verify-otp', async (req, res) => {
       created_at: new Date().toISOString()
     };
     fileDB.addUser(user);
-    console.log(`✅ [Database] New Customer Account Created:`, user);
+    console.log(`[auth] Created user:`, user);
 
     // Sync to IndoWings Supabase (jycdvbdncdmidnyitfpv) profiles table
     try {
@@ -216,8 +209,8 @@ router.post('/auth/verify-otp', async (req, res) => {
             organization: 'IndoWings Customer Fleet',
             badge_id: user.id
           }, { onConflict: 'email' }).then(({ error }) => {
-            if (error) console.warn('⚠️ IndoWings Supabase profile sync note:', error.message);
-            else console.log('☁️ [IndoWings Supabase] Customer Profile Synced to Cloud DB!');
+            if (error) console.warn('[db] Profile sync note:', error.message);
+            else console.log('[db] Customer profile synced to cloud db');
           });
         }
       });
@@ -227,7 +220,7 @@ router.post('/auth/verify-otp', async (req, res) => {
 
     sendWelcomeEmail(user.email, user.name, user.phone).catch(err => console.error('Welcome email error:', err));
   } else {
-    console.log(`✅ [Database] User Logged In via OTP:`, user.name);
+    console.log(`[auth] User logged in via OTP:`, user.name);
   }
 
   // Send login alert email
@@ -242,7 +235,7 @@ router.post('/auth/verify-otp', async (req, res) => {
   });
 });
 
-// ── 3. AUTH: Direct Password Login (Admin & Existing) ───────────────────────
+// Auth: Direct password authentication
 router.post('/auth/login', (req, res) => {
   const { email, phone, password } = req.body;
 
@@ -263,7 +256,7 @@ router.post('/auth/login', (req, res) => {
       role: 'admin'
     };
     const token = jwt.sign(adminUser, JWT_SECRET, { expiresIn: '24h' });
-    console.log(`👑 [Auth] Admin Login Successful: ${adminEmail}`);
+    console.log(`[auth] Admin authenticated: ${adminEmail}`);
 
     const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'Localhost';
     sendLoginAlertEmail(adminEmail, adminUser.name, 'admin', clientIp).catch(err => console.error('Admin login email error:', err));
@@ -289,7 +282,7 @@ router.post('/auth/login', (req, res) => {
   res.json({ message: 'Login successful', token, user });
 });
 
-// ── 4. AUTH: Me / Verify Session ────────────────────────────────────────────
+// Auth: Session verification
 router.get('/auth/me', (req, res) => {
   const auth = req.headers.authorization;
   if (!auth) { res.status(401).json({ error: 'No token' }); return; }
@@ -301,7 +294,7 @@ router.get('/auth/me', (req, res) => {
   }
 });
 
-// ── 4.1. PROFILE: Get Current User Profile & Saved Addresses ───────────────
+// Profile: Get profile and saved addresses
 router.get('/profile', (req, res) => {
   const auth = req.headers.authorization;
   if (!auth) { res.status(401).json({ error: 'No token' }); return; }
@@ -324,7 +317,7 @@ router.get('/profile', (req, res) => {
   }
 });
 
-// ── 4.2. PROFILE: Update User Profile & Addresses ──────────────────────────
+// Profile: Update profile details
 router.put('/profile', (req, res) => {
   const auth = req.headers.authorization;
   if (!auth) { res.status(401).json({ error: 'No token' }); return; }
@@ -379,7 +372,7 @@ router.put('/profile', (req, res) => {
   }
 });
 
-// ── 4.3. PROFILE: Send Verification OTP for Email or Phone ─────────────────
+// Profile: Request verification OTP
 router.post('/profile/send-verify-otp', async (req, res) => {
   const auth = req.headers.authorization;
   if (!auth) { res.status(401).json({ error: 'Unauthorized' }); return; }
@@ -420,7 +413,7 @@ router.post('/profile/send-verify-otp', async (req, res) => {
   res.status(400).json({ error: 'Invalid verification target' });
 });
 
-// ── 4.4. PROFILE: Confirm Verification OTP for Email or Phone ──────────────
+// Profile: Confirm verification OTP
 router.post('/profile/verify-otp', async (req, res) => {
   const auth = req.headers.authorization;
   if (!auth) { res.status(401).json({ error: 'Unauthorized' }); return; }
@@ -486,7 +479,7 @@ router.post('/profile/verify-otp', async (req, res) => {
   res.status(400).json({ error: 'Invalid target' });
 });
 
-// ── 5. ORDERS: Create New Delivery Order ────────────────────────────────────
+// Orders: Create delivery order
 router.post('/orders', (req, res) => {
   const auth = req.headers.authorization;
   let user: any = null;
@@ -594,7 +587,7 @@ router.post('/orders', (req, res) => {
   };
 
   fileDB.addOrder(newOrder);
-  console.log(`📦 [Database] New Order Saved: ${orderId} (${newOrder.payment_method.toUpperCase()}) assigned to ${newOrder.drone_id}`);
+  console.log(`[order] Created order: ${orderId} (${newOrder.payment_method.toUpperCase()}) assigned to ${newOrder.drone_id}`);
 
   // Sync to IndoWings Supabase delivery_orders table
   try {
@@ -613,7 +606,7 @@ router.post('/orders', (req, res) => {
   res.status(201).json({ message: 'Delivery order placed successfully', order: newOrder });
 });
 
-// ── 6. ORDERS: List Orders ──────────────────────────────────────────────────
+// Orders: List orders
 router.get('/orders', (req, res) => {
   const auth = req.headers.authorization;
   let user: any = null;
@@ -639,7 +632,7 @@ router.get('/orders', (req, res) => {
   }
 });
 
-// ── 7. ORDERS: Get by ID ────────────────────────────────────────────────────
+// Orders: Fetch order by ID
 router.get('/orders/:id', (req, res) => {
   const order = fileDB.findOrderById(req.params.id);
   if (!order) {
@@ -649,7 +642,7 @@ router.get('/orders/:id', (req, res) => {
   res.json({ order });
 });
 
-// ── 8. ORDERS: Update Status ────────────────────────────────────────────────
+// Orders: Update status and telemetry
 router.patch('/orders/:id/status', (req, res) => {
   const { status } = req.body;
   const order = fileDB.findOrderById(req.params.id);
@@ -726,7 +719,7 @@ router.patch('/orders/:id/status', (req, res) => {
   res.json({ message: 'Status updated successfully', order: updated });
 });
 
-// ── 8.1. ORDERS: Cancel Order by Customer ──────────────────────────────────
+// Orders: Cancel order
 router.post('/orders/:id/cancel', (req, res) => {
   const auth = req.headers.authorization;
   let user: any = null;
@@ -779,13 +772,13 @@ router.post('/orders/:id/cancel', (req, res) => {
     });
   } catch {}
 
-  console.log(`❌ [Database] Order ${order.id} cancelled by customer ${user?.name || ''}`);
+  console.log(`[error] [Database] Order ${order.id} cancelled by customer ${user?.name || ''}`);
   sendOrderStatusEmail(updated, 'cancelled').catch(err => console.error('Cancel email error:', err));
 
   res.json({ message: 'Order cancelled successfully', order: updated });
 });
 
-// ── 9. FLEET: Get Dynamic Live Fleet ─────────────────────────────────────────
+// Fleet: Get fleet status
 router.get('/fleet', (req, res) => {
   const fleet = fileDB.getFleet();
   const orders = fileDB.getOrders();
@@ -847,7 +840,7 @@ router.get('/fleet', (req, res) => {
   });
 });
 
-// ── 9.1. FLEET: Update Drone Telemetry / State ──────────────────────────────
+// Fleet: Update drone telemetry
 router.patch('/fleet/:id', (req, res) => {
   const { status, battery, current_city, model } = req.body;
   const fleet = fileDB.getFleet();
@@ -869,7 +862,7 @@ router.patch('/fleet/:id', (req, res) => {
   res.json({ message: `Drone ${drone.id} telemetry updated`, drone: updatedDrone });
 });
 
-// ── 9.2. FLEET: Register New Drone ──────────────────────────────────────────
+// Fleet: Register new drone
 router.post('/fleet', (req, res) => {
   const { id, model, current_city, payload_capacity_kg } = req.body;
   const fleet = fileDB.getFleet();
@@ -902,7 +895,7 @@ router.post('/fleet', (req, res) => {
   res.status(201).json({ message: 'Drone successfully registered to fleet', drone: newDrone });
 });
 
-// ── 9.3. ANALYTICS: Dynamic Mission & Financial Stats ───────────────────────
+// Analytics: Flight metrics and statistics
 router.get('/analytics', (req, res) => {
   const orders = fileDB.getOrders();
   const fleet = fileDB.getFleet();
@@ -968,7 +961,7 @@ router.get('/analytics', (req, res) => {
   });
 });
 
-// ── 10. PAYMENT: Create Razorpay Order ──────────────────────────────────────
+// Payments: Create Razorpay order intent
 router.post('/payment/create-order', async (req, res) => {
   try {
     const { amount_inr, order_id, package_type } = req.body;
@@ -996,7 +989,7 @@ router.post('/payment/create-order', async (req, res) => {
         });
         return;
       } catch (err: any) {
-        console.warn('⚠️ Razorpay live API note:', err.message);
+        console.warn('[payment] Razorpay notice:', err.message);
       }
     }
 
@@ -1013,7 +1006,7 @@ router.post('/payment/create-order', async (req, res) => {
   }
 });
 
-// ── 11. PAYMENT: Verify Razorpay Payment ────────────────────────────────────
+// Payments: Verify Razorpay signature
 router.post('/payment/verify-payment', (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, delivery_order_id } = req.body;
@@ -1035,7 +1028,7 @@ router.post('/payment/verify-payment', (req, res) => {
         payment_id: razorpay_payment_id || `PAY-${Date.now()}`,
         payment_time: new Date().toISOString()
       });
-      console.log(`💳 [Payment] Order ${delivery_order_id} marked as PAID via Razorpay (${razorpay_payment_id})`);
+      console.log(`[payment] Order ${delivery_order_id} marked as PAID via Razorpay (${razorpay_payment_id})`);
     }
 
     res.json({
@@ -1048,7 +1041,7 @@ router.post('/payment/verify-payment', (req, res) => {
   }
 });
 
-// ── 12. SUPPORT & EXPERT CONSULTATION DESK ───────────────────────────────────
+// Support: Expert consultation requests
 // Submit a callback / technical consultation request
 router.post('/support/expert-request', (req, res) => {
   try {
@@ -1072,7 +1065,7 @@ router.post('/support/expert-request', (req, res) => {
     };
 
     const saved = fileDB.saveExpertRequest(newRequest);
-    console.log(`\n📞 [Support Desk] New Expert Consultation Request Recorded: ${requestId}`);
+    console.log(`\n[support] Consultation request recorded: ${requestId}`);
     console.log(`👤 Client: ${newRequest.name} | Phone: ${newRequest.phone} | Topic: ${newRequest.category}\n`);
 
     // Dispatch automated confirmation email to user
@@ -1122,7 +1115,7 @@ router.patch('/support/expert-requests/:id', (req, res) => {
   }
 });
 
-// ── 15. FEEDBACKS & FLIGHT REVIEWS ──────────────────────────────────────────
+// Feedback: Customer reviews and ratings
 // Public: Get all feedbacks
 router.get('/feedbacks', (req, res) => {
   try {
@@ -1169,7 +1162,7 @@ router.post('/feedbacks', (req, res) => {
     };
 
     const saved = fileDB.saveFeedback(feedback);
-    console.log(`⭐ [Feedback] New review received from ${feedback.user_name} (${feedback.rating}★) for ${feedback.drone_name}`);
+    console.log(`[feedback] New review from ${feedback.user_name} (${feedback.rating}★) for ${feedback.drone_name}`);
 
     res.status(201).json({
       success: true,
@@ -1208,7 +1201,7 @@ router.delete('/feedbacks/:id', (req, res) => {
   }
 });
 
-// ── 16. INTELLIGENT DRONE FLIGHT CHATBOT ──────────────────────────────────
+// Chatbot: Virtual flight assistant
 // Track order by Order ID with Customer Name Verification
 router.post('/chatbot/track-by-id', (req, res) => {
   try {
@@ -1403,13 +1396,13 @@ router.post('/chatbot/request-id-otp', async (req, res) => {
     if (linkedEmail && linkedEmail !== cleanEmail) fileDB.saveOTP(linkedEmail, otp, { email: linkedEmail, phone: cleanPhone ? `+91${cleanPhone}` : undefined });
     if (linkedPhone && linkedPhone !== cleanPhone) fileDB.saveOTP(linkedPhone, otp, { phone: `+91${linkedPhone}`, email: cleanEmail || undefined });
 
-    console.log(`🤖 [Chatbot OTP Dispatched] Key: ${cleanEmail || cleanPhone} | Linked: ${linkedEmail || linkedPhone} -> Code: [ ${otp} ]`);
+    console.log(`[bot] Verification OTP dispatched: Key: ${cleanEmail || cleanPhone} | Linked: ${linkedEmail || linkedPhone} -> Code: [ ${otp} ]`);
 
     // Dispatch Email OTP (via Resend / Gmail SMTP)
     const targetEmail = cleanEmail || linkedEmail;
     if (targetEmail) {
       sendOtpNotification({ email: targetEmail, otp, phone: cleanPhone || linkedPhone })
-        .then(() => console.log(`📧 [Chatbot Email Sent] OTP delivered to ${targetEmail}`))
+        .then(() => console.log(`[bot] Email sent: OTP delivered to ${targetEmail}`))
         .catch(err => console.error('Chatbot email OTP error:', err));
     }
 
@@ -1418,8 +1411,8 @@ router.post('/chatbot/request-id-otp', async (req, res) => {
     if (targetPhone) {
       const fullPhone = `+91${targetPhone}`;
       serviceHubOtpClient.auth.signInWithOtp({ phone: fullPhone })
-        .then(() => console.log(`✅ [Chatbot SMS Gateway] Dispatched Twilio SMS to ${fullPhone}`))
-        .catch((err: any) => console.warn(`⚠️ [Chatbot SMS Warning]:`, err.message));
+        .then(() => console.log(`[ok] [Chatbot SMS Gateway] Dispatched Twilio SMS to ${fullPhone}`))
+        .catch((err: any) => console.warn(`[bot] SMS warning:`, err.message));
     }
 
     const channelDesc = isEmail 
@@ -1478,11 +1471,11 @@ router.post('/chatbot/verify-id-otp', async (req, res) => {
           type: 'sms'
         });
         if (!sbErr && (sbVerify?.user || sbVerify?.session)) {
-          console.log(`✅ [Chatbot SMS Verified] Phone OTP Verified Successfully for ${fullPhone}`);
+          console.log(`[bot] SMS verified: Phone OTP Verified Successfully for ${fullPhone}`);
           isValid = true;
         }
       } catch (err: any) {
-        console.warn(`⚠️ [Chatbot SMS Verify Exception]:`, err.message);
+        console.warn(`[bot] SMS verification exception:`, err.message);
       }
     }
 
@@ -1493,7 +1486,7 @@ router.post('/chatbot/verify-id-otp', async (req, res) => {
         const localRes = fileDB.verifyOTP(k, trimmedOtp);
         if (localRes.valid) {
           isValid = true;
-          console.log(`✅ [Chatbot Local Session Verified] OTP Verified for key "${k}"`);
+          console.log(`[bot] Session verified: OTP Verified for key "${k}"`);
           break;
         }
       }

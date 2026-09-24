@@ -58,6 +58,6 @@ app.get('/api/health', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 IndoWings Enterprise Command Center Server running on port ${PORT}`);
-  console.log(`📡 REST API available at: http://localhost:${PORT}/api`);
+  console.log(`Server listening on port ${PORT}`);
+  console.log(`API endpoints mounted at http://localhost:${PORT}/api`);
 });
