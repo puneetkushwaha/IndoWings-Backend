@@ -204,6 +204,18 @@ export const fileDB = {
     this.saveFleet(fleet);
     return fleet[idx];
   },
+  addDrone(drone: any) {
+    const fleet = this.getFleet();
+    fleet.unshift(drone);
+    this.saveFleet(fleet);
+    return drone;
+  },
+  addDronesBatch(drones: any[]) {
+    const fleet = this.getFleet();
+    const updated = [...drones, ...fleet];
+    this.saveFleet(updated);
+    return drones;
+  },
 
   // OTP STORE
   getOTPs() {

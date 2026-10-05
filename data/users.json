@@ -42,5 +42,20 @@
     "organization": "IndoFleet Support Operations",
     "status": "active",
     "created_at": "2026-10-05T12:00:00.000Z"
+  },
+  {
+    "id": "IW-DSP-2039",
+    "name": "Rohan Sharma",
+    "email": "operator_1791225281987@indowings.com",
+    "phone": "+919832699378",
+    "role": "dispatcher",
+    "station": "Connaught Place Hub",
+    "organization": "IndoWings Aerospace Operations",
+    "status": "active",
+    "password": "PermanentSecretPassword999",
+    "must_change_password": false,
+    "created_at": "2026-10-05T18:34:42.039Z",
+    "authorized_by": "puneet@indowings.com",
+    "password_updated_at": "2026-10-05T18:34:42.110Z"
   }
 ]

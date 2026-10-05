@@ -11,5 +11,11 @@
     "name": "Vikram Malhotra",
     "email": "dispatch@indowings.com",
     "phone": "+919876543202"
+  },
+  "operator_1791225281987@indowings.com": {
+    "otp": "538138",
+    "expiresAt": 1791225882095,
+    "name": "Rohan Sharma",
+    "email": "operator_1791225281987@indowings.com"
   }
 }
