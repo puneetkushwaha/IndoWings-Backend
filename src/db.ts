@@ -36,31 +36,89 @@ function writeJSON<T>(collection: string, data: T): void {
   fs.renameSync(tempFile, file);
 }
 
-// Initial Fleet seed if empty
-const defaultDrones = Array.from({ length: 50 }, (_, i) => {
-  const statuses = ['idle', 'en-route', 'charging', 'on-hold', 'returning'];
-  const models = ['Cyberone Pro', 'Cyberone Max', 'IndoHawk Alpha', 'StealthPro VTOL', 'AgriWing X'];
-  const cities = ['Noida Sector 62 Plant', 'Connaught Place Hub', 'Gurugram Defense Depot', 'Faridabad Logistics Hub', 'Greater Noida Assembly'];
-  const qcStatuses = ['passed', 'pending', 'inspection_required'];
-  return {
-    id: `INW-UAV-${String(i + 1).padStart(3, '0')}`,
-    serial_number: `IW-${models[i % 5].substring(0, 3).toUpperCase()}-2026-${String(i + 101)}`,
-    model: models[i % 5],
-    status: statuses[i % 5],
-    qc_status: i % 3 === 0 ? 'passed' : qcStatuses[i % 3],
-    qc_notes: i % 3 === 0 ? 'DGCA Flight Certification & Avionics Passed' : 'Pre-dispatch calibration pending',
-    qc_certified_by: i % 3 === 0 ? 'Fleet Eng. Rajesh Kumar' : null,
-    battery: Math.floor(Math.random() * 40) + 60,
-    speed_kmh: Math.floor(Math.random() * 40) + 40,
-    altitude_m: Math.floor(Math.random() * 80) + 60,
-    current_city: cities[i % 5],
-    lat: 28.5355 + (Math.random() - 0.5) * 0.2,
-    lng: 77.3910 + (Math.random() - 0.5) * 0.2,
-    deliveries_today: Math.floor(Math.random() * 4),
-    assigned_order: null as string | null,
-    assigned_client: null as string | null,
-  };
-});
+// Initial Fleet seed if empty (Clean Manufactured Hardware Inventory)
+const defaultDrones = [
+  {
+    id: 'INW-UAV-001',
+    serial_number: 'IW-CYB-2026-101',
+    model: 'Cyberone Pro',
+    status: 'idle',
+    qc_status: 'passed',
+    qc_notes: 'DGCA NPNT Cryptographic Certification & Avionics Calibrated',
+    qc_certified_by: 'Fleet Lead Rajesh Sharma',
+    battery: 100,
+    speed_kmh: 65,
+    altitude_m: 120,
+    current_city: 'Noida Assembly Plant',
+    deliveries_today: 0,
+    assigned_order: null,
+    assigned_client: null
+  },
+  {
+    id: 'INW-UAV-002',
+    serial_number: 'IW-FAL-2026-102',
+    model: 'Falcon Heavy Cargo',
+    status: 'idle',
+    qc_status: 'passed',
+    qc_notes: 'Dual-IMU Redundancy Check Passed, Multi-Payload Verified',
+    qc_certified_by: 'Fleet Lead Rajesh Sharma',
+    battery: 98,
+    speed_kmh: 70,
+    altitude_m: 120,
+    current_city: 'Noida Assembly Plant',
+    deliveries_today: 0,
+    assigned_order: null,
+    assigned_client: null
+  },
+  {
+    id: 'INW-UAV-003',
+    serial_number: 'IW-TIT-2026-103',
+    model: 'Titan Heavy Lifter',
+    status: 'idle',
+    qc_status: 'passed',
+    qc_notes: 'Heavy Lift Motor Impedance & Battery Cell Balance Verified',
+    qc_certified_by: 'Fleet Lead Rajesh Sharma',
+    battery: 100,
+    speed_kmh: 58,
+    altitude_m: 120,
+    current_city: 'Noida Assembly Plant',
+    deliveries_today: 0,
+    assigned_order: null,
+    assigned_client: null
+  },
+  {
+    id: 'INW-UAV-004',
+    serial_number: 'IW-SKY-2026-104',
+    model: 'SkyScout Survey VTOL',
+    status: 'idle',
+    qc_status: 'passed',
+    qc_notes: 'High-Res Optical Camera Gimbal & RTK GPS Fix Verified',
+    qc_certified_by: 'Fleet Lead Rajesh Sharma',
+    battery: 95,
+    speed_kmh: 80,
+    altitude_m: 120,
+    current_city: 'Gurugram Facility',
+    deliveries_today: 0,
+    assigned_order: null,
+    assigned_client: null
+  },
+  {
+    id: 'INW-UAV-005',
+    serial_number: 'IW-AGR-2026-105',
+    model: 'AgriWing Precision',
+    status: 'idle',
+    qc_status: 'passed',
+    qc_notes: 'Swath Guidance & Nozzle Flow Diagnostics Certified',
+    qc_certified_by: 'Fleet Lead Rajesh Sharma',
+    battery: 100,
+    speed_kmh: 50,
+    altitude_m: 100,
+    current_city: 'Noida Assembly Plant',
+    deliveries_today: 0,
+    assigned_order: null,
+    assigned_client: null
+  }
+];
 
 // Seed provisioned users for the 4 core roles
 const defaultUsers = [
