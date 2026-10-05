@@ -39,24 +39,30 @@ function writeJSON<T>(collection: string, data: T): void {
 // Initial Fleet seed if empty
 const defaultDrones = Array.from({ length: 50 }, (_, i) => {
   const statuses = ['idle', 'en-route', 'charging', 'on-hold', 'returning'];
-  const models = ['Cyberone Pro', 'Cyberone Max', 'Cyberone Lite'];
-  const cities = ['Noida Sector 62', 'Connaught Place, Delhi', 'Cyber City, Gurugram', 'Faridabad Hub', 'Greater Noida Knowledge Park'];
+  const models = ['Cyberone Pro', 'Cyberone Max', 'IndoHawk Alpha', 'StealthPro VTOL', 'AgriWing X'];
+  const cities = ['Noida Sector 62 Plant', 'Connaught Place Hub', 'Gurugram Defense Depot', 'Faridabad Logistics Hub', 'Greater Noida Assembly'];
+  const qcStatuses = ['passed', 'pending', 'inspection_required'];
   return {
-    id: `INW-${String(i + 1).padStart(3, '0')}`,
-    model: models[i % 3],
+    id: `INW-UAV-${String(i + 1).padStart(3, '0')}`,
+    serial_number: `IW-${models[i % 5].substring(0, 3).toUpperCase()}-2026-${String(i + 101)}`,
+    model: models[i % 5],
     status: statuses[i % 5],
-    battery: Math.floor(Math.random() * 50) + 50,
+    qc_status: i % 3 === 0 ? 'passed' : qcStatuses[i % 3],
+    qc_notes: i % 3 === 0 ? 'DGCA Flight Certification & Avionics Passed' : 'Pre-dispatch calibration pending',
+    qc_certified_by: i % 3 === 0 ? 'Fleet Eng. Rajesh Kumar' : null,
+    battery: Math.floor(Math.random() * 40) + 60,
     speed_kmh: Math.floor(Math.random() * 40) + 40,
     altitude_m: Math.floor(Math.random() * 80) + 60,
     current_city: cities[i % 5],
     lat: 28.5355 + (Math.random() - 0.5) * 0.2,
     lng: 77.3910 + (Math.random() - 0.5) * 0.2,
-    deliveries_today: Math.floor(Math.random() * 6) + 1,
+    deliveries_today: Math.floor(Math.random() * 4),
     assigned_order: null as string | null,
+    assigned_client: null as string | null,
   };
 });
 
-// Seed admin user
+// Seed provisioned users for the 4 core roles
 const defaultUsers = [
   {
     id: 'ADMIN-001',
@@ -64,6 +70,53 @@ const defaultUsers = [
     email: process.env.ADMIN_EMAIL || 'puneet@indowings.com',
     phone: '+919999999999',
     role: 'admin',
+    station: 'IndoWings HQ & Plant, Noida',
+    organization: 'IndoWings Corporate',
+    status: 'active',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'FLEET-001',
+    name: 'Rajesh Sharma',
+    email: 'fleet@indowings.com',
+    phone: '+919876543201',
+    role: 'fleet_manager',
+    station: 'Noida Assembly & QC Plant',
+    organization: 'IndoWings Fleet Operations',
+    status: 'active',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'DISP-001',
+    name: 'Vikram Malhotra',
+    email: 'dispatch@indowings.com',
+    phone: '+919876543202',
+    role: 'dispatcher',
+    station: 'Delhi-NCR Logistics Hub',
+    organization: 'IndoWings Dispatch Command',
+    status: 'active',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'SUPP-001',
+    name: 'IndoFleet Support Desk',
+    email: 'connect@indowings.com',
+    phone: '+917669478937',
+    role: 'support',
+    station: 'Central Grievance & Technical Support Desk',
+    organization: 'IndoFleet Support Operations',
+    status: 'active',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'CLIENT-001',
+    name: 'Col. Amit Verma',
+    email: 'client@defenselogistics.in',
+    phone: '+919876543203',
+    role: 'client',
+    station: 'Northern Airbase Depot',
+    organization: 'Defense & Aerospace Logistics',
+    status: 'active',
     created_at: new Date().toISOString()
   }
 ];
@@ -101,6 +154,12 @@ export const fileDB = {
     users[idx] = { ...users[idx], ...updates };
     this.saveUsers(users);
     return users[idx];
+  },
+  deleteUser(id: string) {
+    const users = this.getUsers();
+    const filtered = users.filter(u => u.id !== id && u.email?.toLowerCase() !== id.toLowerCase());
+    this.saveUsers(filtered);
+    return true;
   },
 
   // ORDERS

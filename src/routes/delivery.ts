@@ -8,7 +8,8 @@ import {
   sendOtpNotification, sendWelcomeEmail, sendLoginAlertEmail, 
   sendOrderPlacedEmail, sendOrderStatusEmail,
   sendExpertRequestCreatedEmail, sendExpertRequestStatusEmail,
-  sendFeedbackInvitationEmail
+  sendFeedbackInvitationEmail,
+  sendSupportQueryAlertToTeam, sendQueryResolutionEmail, sendDirectSupportEmail
 } from '../emailService.js';
 
 const router = Router();
@@ -38,9 +39,9 @@ try {
 
 // Auth: Send OTP verification code
 router.post('/auth/send-otp', async (req, res) => {
-  const { phone, email, name } = req.body;
+  const { phone, email } = req.body;
   if (!phone && !email) {
-    res.status(400).json({ error: 'Please enter your email address or mobile phone number' });
+    res.status(400).json({ error: 'Please enter your registered email address or mobile phone number' });
     return;
   }
 
@@ -53,30 +54,43 @@ router.post('/auth/send-otp', async (req, res) => {
     return;
   }
 
+  // 🔒 STRICT CHECK: Account MUST be pre-provisioned by Admin
+  let existingUser: any = null;
+  if (cleanEmail) existingUser = fileDB.findUserByEmail(cleanEmail);
+  if (!existingUser && cleanPhone) existingUser = fileDB.findUserByPhone(cleanPhone);
+
+  if (!existingUser) {
+    res.status(403).json({
+      error: 'Access Denied: This account is not registered. Please contact your IndoWings Administrator for ID provisioning.'
+    });
+    return;
+  }
+
   // Generate 6-digit cryptographic-grade numeric OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   // 1. Direct Email OTP
   if (isEmail && cleanEmail) {
-    fileDB.saveOTP(cleanEmail, otp, { name, email: cleanEmail });
+    fileDB.saveOTP(cleanEmail, otp, { name: existingUser.name, email: cleanEmail });
 
-    console.log(`[auth] Email OTP dispatched to ${cleanEmail}`);
+    console.log(`[auth] Email OTP dispatched to ${cleanEmail}: [ ${otp} ]`);
 
     sendOtpNotification({ email: cleanEmail, otp }).catch(err => console.error('Email OTP error:', err));
 
     res.json({
       message: `Verification code sent to ${cleanEmail}`,
       channel: 'email',
-      destination: cleanEmail
+      destination: cleanEmail,
+      role: existingUser.role
     });
     return;
   }
 
-  // 2. Real Mobile Phone SMS OTP (ServiceHub Twilio Gateway)
+  // 2. Real Mobile Phone SMS OTP
   const fullPhone = `+91${cleanPhone}`;
-  fileDB.saveOTP(cleanPhone, otp, { name, email: cleanEmail, phone: fullPhone });
+  fileDB.saveOTP(cleanPhone, otp, { name: existingUser.name, email: existingUser.email, phone: fullPhone });
 
-  console.log(`[auth] SMS OTP dispatched to ${fullPhone}`);
+  console.log(`[auth] SMS OTP dispatched to ${fullPhone}: [ ${otp} ]`);
 
   try {
     const { data: sbData, error: sbError } = await serviceHubOtpClient.auth.signInWithOtp({
@@ -91,23 +105,22 @@ router.post('/auth/send-otp', async (req, res) => {
     console.warn(`[sms] Dispatch error:`, err.message);
   }
 
-  
-
-  if (cleanEmail) {
-    sendOtpNotification({ email: cleanEmail, phone: cleanPhone, otp }).catch(err => console.error('OTP email error:', err));
+  if (existingUser.email) {
+    sendOtpNotification({ email: existingUser.email, phone: cleanPhone, otp }).catch(err => console.error('OTP email error:', err));
   }
 
   res.json({
     message: `Verification code dispatched to +91 ${cleanPhone}`,
     channel: 'phone',
     destination: `+91 ${cleanPhone}`,
-    phone: `+91 ${cleanPhone}`
+    phone: `+91 ${cleanPhone}`,
+    role: existingUser.role
   });
 });
 
-// Auth: Verify OTP and login / create account
+// Auth: Verify OTP and login strictly for provisioned users
 router.post('/auth/verify-otp', async (req, res) => {
-  const { phone, email, otp, name } = req.body;
+  const { phone, email, otp } = req.body;
   if ((!phone && !email) || !otp) {
     res.status(400).json({ error: 'Email/Phone and verification code are required' });
     return;
@@ -119,7 +132,6 @@ router.post('/auth/verify-otp', async (req, res) => {
   const trimmedOtp = otp.toString().trim();
 
   let isValid = false;
-  let meta: any = null;
 
   // 1. If phone provided, verify with ServiceHub Supabase SMS first
   if (cleanPhone) {
@@ -142,7 +154,6 @@ router.post('/auth/verify-otp', async (req, res) => {
       const localPhoneRes = fileDB.verifyOTP(cleanPhone, trimmedOtp);
       if (localPhoneRes.valid) {
         isValid = true;
-        meta = localPhoneRes.meta;
         console.log(`[auth] Session verified for ${cleanPhone}`);
       }
     }
@@ -153,7 +164,6 @@ router.post('/auth/verify-otp', async (req, res) => {
     const localEmailRes = fileDB.verifyOTP(cleanEmail, trimmedOtp);
     if (localEmailRes.valid) {
       isValid = true;
-      meta = localEmailRes.meta;
       console.log(`[auth] Email OTP verified for ${cleanEmail}`);
     }
   }
@@ -163,65 +173,19 @@ router.post('/auth/verify-otp', async (req, res) => {
     return;
   }
 
-  // Check if admin is logging in via OTP
-  const adminEmail = (process.env.ADMIN_EMAIL || 'puneet@indowings.com').toLowerCase();
+  // Look up pre-provisioned user
   let user: any = null;
-
-  if (cleanEmail && cleanEmail === adminEmail) {
-    user = {
-      id: 'ADMIN-001',
-      name: process.env.ADMIN_NAME || 'Puneet Kushwaha',
-      email: adminEmail,
-      phone: '+919999999999',
-      role: 'admin'
-    };
-  }
-
-  // Check if customer exists
-  if (!user && cleanEmail) user = fileDB.findUserByEmail(cleanEmail);
+  if (cleanEmail) user = fileDB.findUserByEmail(cleanEmail);
   if (!user && cleanPhone) user = fileDB.findUserByPhone(cleanPhone);
 
   if (!user) {
-    // Create new customer account in persistent DB
-    const finalName = name || meta?.name || (cleanEmail ? cleanEmail.split('@')[0] : `Customer ${cleanPhone.slice(-4)}`);
-    const finalEmail = cleanEmail || meta?.email || `user.${cleanPhone}@customer.indowings.com`;
-    const finalPhone = cleanPhone ? `+91 ${cleanPhone}` : (meta?.phone || '');
-
-    user = {
-      id: `CUST-${Date.now()}`,
-      name: finalName,
-      email: finalEmail,
-      phone: finalPhone,
-      role: 'customer',
-      created_at: new Date().toISOString()
-    };
-    fileDB.addUser(user);
-    console.log(`[auth] Created user:`, user);
-
-    // Sync to IndoWings Supabase (jycdvbdncdmidnyitfpv) profiles table
-    try {
-      import('../supabase.js').then(({ supabase }) => {
-        if (supabase) {
-          supabase.from('profiles').upsert({
-            email: user.email,
-            full_name: user.name,
-            role: user.role,
-            organization: 'IndoWings Customer Fleet',
-            badge_id: user.id
-          }, { onConflict: 'email' }).then(({ error }) => {
-            if (error) console.warn('[db] Profile sync note:', error.message);
-            else console.log('[db] Customer profile synced to cloud db');
-          });
-        }
-      });
-    } catch (e: any) {
-      console.warn('Sync exception:', e.message);
-    }
-
-    sendWelcomeEmail(user.email, user.name, user.phone).catch(err => console.error('Welcome email error:', err));
-  } else {
-    console.log(`[auth] User logged in via OTP:`, user.name);
+    res.status(403).json({
+      error: 'Access Denied: User account not found or not provisioned by Administrator.'
+    });
+    return;
   }
+
+  console.log(`[auth] User authenticated via OTP:`, user.name, `[Role: ${user.role}]`);
 
   // Send login alert email
   const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'Localhost';
@@ -233,6 +197,121 @@ router.post('/auth/verify-otp', async (req, res) => {
     token,
     user
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN USER & PERSONNEL MANAGEMENT ENDPOINTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// List all provisioned users
+router.get('/users', (req, res) => {
+  const users = fileDB.getUsers();
+  res.json({ users });
+});
+
+// Admin: Provision / Create New User ID
+router.post('/users', (req, res) => {
+  const { name, email, phone, role, station, organization } = req.body;
+  if (!name || !email || !role) {
+    res.status(400).json({ error: 'Name, email, and role are required' });
+    return;
+  }
+
+  const cleanEmail = email.toLowerCase().trim();
+  const cleanPhone = phone ? phone.replace(/[^0-9]/g, '').slice(-10) : '';
+
+  const existingEmail = fileDB.findUserByEmail(cleanEmail);
+  if (existingEmail) {
+    res.status(400).json({ error: 'A user with this email already exists' });
+    return;
+  }
+
+  if (cleanPhone) {
+    const existingPhone = fileDB.findUserByPhone(cleanPhone);
+    if (existingPhone) {
+      res.status(400).json({ error: 'A user with this mobile number already exists' });
+      return;
+    }
+  }
+
+  const rolePrefix = role === 'admin' ? 'ADM' : role === 'fleet_manager' ? 'FLT' : role === 'dispatcher' ? 'DSP' : 'CLI';
+  const newUser = {
+    id: `IW-${rolePrefix}-${Date.now().toString().slice(-4)}`,
+    name: name.trim(),
+    email: cleanEmail,
+    phone: cleanPhone ? `+91${cleanPhone}` : '',
+    role, // 'admin' | 'fleet_manager' | 'dispatcher' | 'client'
+    station: station || 'IndoWings Facility',
+    organization: organization || 'IndoWings Operations',
+    status: 'active',
+    created_at: new Date().toISOString()
+  };
+
+  fileDB.addUser(newUser);
+  console.log(`[admin] Created new user:`, newUser);
+  res.status(201).json({ message: 'User provisioned successfully', user: newUser });
+});
+
+// Admin: Update User
+router.patch('/users/:id', (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  const updated = fileDB.updateUser(id, updates);
+  if (!updated) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
+  res.json({ message: 'User updated successfully', user: updated });
+});
+
+// Admin: Delete User
+router.delete('/users/:id', (req, res) => {
+  const { id } = req.params;
+  fileDB.deleteUser(id);
+  res.json({ message: 'User removed successfully' });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FLEET QC & CLIENT HANDOVER ENDPOINTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Fleet Manager QC Clearance
+router.post('/drones/:id/qc', (req, res) => {
+  const { id } = req.params;
+  const { qc_status, qc_notes, qc_certified_by } = req.body;
+  const updated = fileDB.updateDrone(id, {
+    qc_status: qc_status || 'passed',
+    qc_notes: qc_notes || 'All hardware and avionics systems cleared for dispatch',
+    qc_certified_by: qc_certified_by || 'Fleet Operations',
+    qc_timestamp: new Date().toISOString()
+  });
+  if (!updated) {
+    res.status(404).json({ error: 'Drone not found' });
+    return;
+  }
+  res.json({ message: 'QC Clearance updated', drone: updated });
+});
+
+// Client Drone Handover / Acceptance
+router.post('/orders/:id/handover', (req, res) => {
+  const { id } = req.params;
+  const { inspector_name, condition_rating, remarks } = req.body;
+  const order = fileDB.findOrderById(id);
+  if (!order) {
+    res.status(404).json({ error: 'Shipment order not found' });
+    return;
+  }
+  const updated = fileDB.updateOrder(id, {
+    status: 'delivered',
+    delivered_at: new Date().toISOString(),
+    handover_details: {
+      inspector_name: inspector_name || 'Receiving Officer',
+      condition_rating: condition_rating || 5,
+      remarks: remarks || 'Accepted and verified in satisfactory operational condition',
+      handover_timestamp: new Date().toISOString()
+    }
+  });
+  res.json({ message: 'Drone shipment successfully accepted and handed over', order: updated });
 });
 
 // Auth: Direct password authentication
@@ -1042,76 +1121,184 @@ router.post('/payment/verify-payment', (req, res) => {
 });
 
 // Support: Expert consultation requests
-// Submit a callback / technical consultation request
-router.post('/support/expert-request', (req, res) => {
+// Submit a support query / technical consultation request
+router.post(['/support/expert-request', '/support/ticket'], async (req, res) => {
   try {
-    const { name, phone, email, category, query_type, message, preferred_time } = req.body;
+    const { 
+      name, phone, email, category, query_type, message, 
+      preferred_time, preferred_callback, order_id, delivery_address, 
+      drone_serial, priority 
+    } = req.body;
+
     if (!phone && !email) {
       res.status(400).json({ error: 'Please provide at least a phone number or email address' });
       return;
     }
 
-    const requestId = `EXP-${Date.now().toString().slice(-6)}`;
+    const requestId = `TKT-${Date.now().toString().slice(-6)}`;
     const newRequest = {
       id: requestId,
       name: name?.trim() || 'Client',
       phone: phone?.trim() || '',
       email: email?.trim() || '',
-      category: category || query_type || 'General Operations',
+      category: category || query_type || 'General Support',
+      priority: (priority || 'normal').toLowerCase(), // urgent, high, normal, low
+      order_id: order_id?.trim() || null,
+      delivery_address: delivery_address?.trim() || null,
+      drone_serial: drone_serial?.trim() || null,
       message: message?.trim() || '',
-      preferred_time: preferred_time || 'Immediate Callback',
-      status: 'pending', // pending, in-progress, contacted, resolved
+      preferred_time: preferred_time || preferred_callback || 'Immediate Callback',
+      status: 'open', // open, in_progress, resolved, closed
+      call_logs: [] as any[],
+      email_thread: [] as any[],
       created_at: new Date().toISOString()
     };
 
     const saved = fileDB.saveExpertRequest(newRequest);
-    console.log(`\n[support] Consultation request recorded: ${requestId}`);
-    console.log(`👤 Client: ${newRequest.name} | Phone: ${newRequest.phone} | Topic: ${newRequest.category}\n`);
+    console.log(`\n[support] Support query logged: ${requestId}`);
+    console.log(`👤 Customer: ${newRequest.name} | Phone: ${newRequest.phone} | Order: ${newRequest.order_id || 'N/A'} | Topic: ${newRequest.category}\n`);
 
-    // Dispatch automated confirmation email to user
+    // 1. Dispatch real-time alert email to Support Team (connect@indowings.com)
+    sendSupportQueryAlertToTeam(saved).catch(err => console.error('[support] Team notification email failed:', err));
+
+    // 2. Dispatch automated confirmation email to customer
     if (saved.email) {
-      sendExpertRequestCreatedEmail(saved).catch(err => console.error('Consultation creation email error:', err));
+      sendExpertRequestCreatedEmail(saved).catch(err => console.error('[support] Customer confirmation email failed:', err));
     }
 
     res.json({
       success: true,
-      message: 'Consultation request submitted. A flight operations engineer will contact you shortly.',
+      message: 'Support query logged successfully. A flight operations specialist has been alerted and will assist you shortly.',
       request: saved
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to submit expert request' });
+    res.status(500).json({ error: err.message || 'Failed to submit support request' });
   }
 });
 
-// Get all expert requests (for Admin / Dispatch board)
-router.get('/support/expert-requests', (req, res) => {
+// Get all support tickets / expert requests (for Support Desk & Admin)
+router.get(['/support/expert-requests', '/support/tickets'], (req, res) => {
   try {
     const requests = fileDB.getExpertRequests();
     res.json({ success: true, requests });
   } catch (err: any) {
-    res.status(500).json({ error: 'Failed to fetch expert requests' });
+    res.status(500).json({ error: 'Failed to fetch support requests' });
   }
 });
 
-// Update status of expert request (for Admin)
-router.patch('/support/expert-requests/:id', (req, res) => {
+// Update status / resolve support ticket
+router.patch(['/support/expert-requests/:id', '/support/tickets/:id'], async (req, res) => {
   try {
-    const { id } = req.params;
-    const { status, notes } = req.body;
-    const updated = fileDB.updateExpertRequest(id, { status, notes });
-    if (!updated) {
-      res.status(404).json({ error: 'Request not found' });
+    const id = String(req.params.id);
+    const existing = fileDB.getExpertRequests().find(r => r.id === id);
+    if (!existing) {
+      res.status(404).json({ error: 'Ticket not found' });
       return;
     }
 
-    // Dispatch status update email to user
-    if (updated.email) {
-      sendExpertRequestStatusEmail(updated, status, notes).catch(err => console.error('Consultation status email error:', err));
+    const { status, notes, resolution_notes, agent_name } = req.body;
+    const updates: any = {};
+    if (status) updates.status = status.toLowerCase();
+    if (notes || resolution_notes) {
+      updates.resolution_notes = resolution_notes || notes;
+      updates.notes = notes || resolution_notes;
+    }
+    if (agent_name) updates.resolved_by = agent_name;
+    if (status === 'resolved' || status === 'closed') {
+      updates.resolved_at = new Date().toISOString();
+    }
+
+    const updated = fileDB.updateExpertRequest(id, updates);
+    if (!updated) {
+      res.status(404).json({ error: 'Ticket update failed' });
+      return;
+    }
+
+    // If resolved or closed with notes, send resolution notification email to user
+    if (updated.email && (updates.status === 'resolved' || updates.status === 'closed')) {
+      sendQueryResolutionEmail(updated, updates.resolution_notes || 'Your query has been reviewed and resolved by our support team.', agent_name || 'IndoFleet Support Desk')
+        .catch(err => console.error('[support] Resolution email error:', err));
+    } else if (updated.email && updates.status) {
+      sendExpertRequestStatusEmail(updated, updates.status, updates.notes)
+        .catch(err => console.error('[support] Status update email error:', err));
     }
 
     res.json({ success: true, request: updated });
   } catch (err: any) {
-    res.status(500).json({ error: 'Failed to update request' });
+    res.status(500).json({ error: 'Failed to update ticket' });
+  }
+});
+
+// Log a phone call to a customer
+router.post('/support/tickets/:id/call-log', (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const { duration_seconds, outcome, remarks, agent_name } = req.body;
+
+    const existing = fileDB.getExpertRequests().find(r => r.id === id);
+    if (!existing) {
+      res.status(404).json({ error: 'Ticket not found' });
+      return;
+    }
+
+    const callLogEntry = {
+      id: `CALL-${Date.now().toString().slice(-5)}`,
+      duration_seconds: Number(duration_seconds) || 60,
+      outcome: outcome || 'Call Completed',
+      remarks: remarks || '',
+      agent_name: agent_name || 'Support Agent',
+      timestamp: new Date().toISOString()
+    };
+
+    const call_logs = Array.isArray(existing.call_logs) ? [...existing.call_logs, callLogEntry] : [callLogEntry];
+    const updated = fileDB.updateExpertRequest(id, { call_logs, last_contacted_at: new Date().toISOString() });
+
+    console.log(`[support] Call logged for ${id}: ${callLogEntry.outcome} (${callLogEntry.duration_seconds}s)`);
+
+    res.json({ success: true, request: updated, call_log: callLogEntry });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to log call' });
+  }
+});
+
+// Send direct email reply from support dashboard to customer
+router.post('/support/tickets/:id/send-email', async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const { subject, message, agent_name } = req.body;
+
+    const existing = fileDB.getExpertRequests().find(r => r.id === id);
+    if (!existing) {
+      res.status(404).json({ error: 'Ticket not found' });
+      return;
+    }
+
+    if (!existing.email) {
+      res.status(400).json({ error: 'Customer has no email address associated with this ticket' });
+      return;
+    }
+
+    const emailSubject = subject || `Re: Support Ticket [${existing.id}] - IndoFleet Operations`;
+    await sendDirectSupportEmail(existing.email, emailSubject, message, agent_name || 'IndoFleet Support Desk');
+
+    const emailEntry = {
+      id: `MSG-${Date.now().toString().slice(-5)}`,
+      direction: 'outbound',
+      to: existing.email,
+      subject: emailSubject,
+      message,
+      agent_name: agent_name || 'Support Agent',
+      timestamp: new Date().toISOString()
+    };
+
+    const email_thread = Array.isArray(existing.email_thread) ? [...existing.email_thread, emailEntry] : [emailEntry];
+    const updated = fileDB.updateExpertRequest(id, { email_thread });
+
+    console.log(`[support] Direct email sent to ${existing.email} for ticket ${id}`);
+
+    res.json({ success: true, request: updated, email_entry: emailEntry });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to send direct email' });
   }
 });
 

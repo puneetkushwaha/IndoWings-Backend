@@ -5,54 +5,53 @@
     "email": "puneet@indowings.com",
     "phone": "+919999999999",
     "role": "admin",
+    "station": "IndoWings HQ & Plant, Noida",
+    "organization": "IndoWings Corporate",
+    "status": "active",
     "created_at": "2026-09-19T03:47:31.825Z"
   },
   {
-    "id": "CUST-1789789689554",
-    "name": "Puneet Test",
-    "email": "puneet.test@indowings.com",
-    "phone": "+91 9876543210",
-    "role": "customer",
-    "created_at": "2026-09-19T03:48:09.554Z"
+    "id": "FLEET-001",
+    "name": "Rajesh Sharma",
+    "email": "fleet@indowings.com",
+    "phone": "+919876543201",
+    "role": "fleet_manager",
+    "station": "Noida Assembly & QC Plant",
+    "organization": "IndoWings Fleet Operations",
+    "status": "active",
+    "created_at": "2026-10-05T12:00:00.000Z"
   },
   {
-    "id": "CUST-1789792128023",
-    "name": "Puneet Kushwaha",
-    "email": "puneetkushwaha88@gmail.com",
-    "phone": "+91 7380663685",
-    "role": "customer",
-    "created_at": "2026-09-19T04:28:48.023Z",
-    "saved_addresses": [
-      {
-        "id": "addr-1",
-        "label": "Home",
-        "full_address": "B-142, Sector 62, Noida, UP",
-        "landmark": "Near Fortis Hospital",
-        "city": "Noida",
-        "pincode": "201301",
-        "is_default": true,
-        "recipient_name": "Puneet Kushwaha",
-        "recipient_phone": "7380663685"
-      },
-      {
-        "id": "addr-2",
-        "label": "Office",
-        "full_address": "IndoWings Flight Hub, Sector 63, Noida, UP",
-        "landmark": "Near Electronic City Metro",
-        "city": "Noida",
-        "pincode": "201307",
-        "is_default": false,
-        "recipient_name": "HQ Operations Team",
-        "recipient_phone": "9999999999"
-      }
-    ]
+    "id": "DISP-001",
+    "name": "Vikram Malhotra",
+    "email": "dispatch@indowings.com",
+    "phone": "+919876543202",
+    "role": "dispatcher",
+    "station": "Delhi-NCR Logistics Hub",
+    "organization": "IndoWings Dispatch Command",
+    "status": "active",
+    "created_at": "2026-10-05T12:00:00.000Z"
   },
   {
-    "id": "CUST-1789792454843",
-    "name": "puneetkushwaha9452",
-    "email": "puneetkushwaha9452@gmail.com",
-    "phone": "+91 7380663685",
-    "role": "customer",
-    "created_at": "2026-09-19T04:34:14.843Z"
+    "id": "SUPP-001",
+    "name": "IndoFleet Support Desk",
+    "email": "connect@indowings.com",
+    "phone": "+917669478937",
+    "role": "support",
+    "station": "Central Grievance & Technical Support Desk",
+    "organization": "IndoFleet Support Operations",
+    "status": "active",
+    "created_at": "2026-10-05T12:00:00.000Z"
+  },
+  {
+    "id": "CLIENT-001",
+    "name": "Col. Amit Verma",
+    "email": "client@defenselogistics.in",
+    "phone": "+919876543203",
+    "role": "client",
+    "station": "Northern Airbase Depot",
+    "organization": "Defense & Aerospace Logistics",
+    "status": "active",
+    "created_at": "2026-10-05T12:00:00.000Z"
   }
 ]

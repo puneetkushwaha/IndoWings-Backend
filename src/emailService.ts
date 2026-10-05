@@ -634,3 +634,187 @@ Sector 62, Noida, Uttar Pradesh
   await sendEmail({ to, subject, text, html });
 }
 
+// ── 8. Support Query: Alert to Support Team ──────────────────────────────────
+export async function sendSupportQueryAlertToTeam(query: any) {
+  const to = 'connect@indowings.com';
+  const subject = `[SUPPORT QUERY] ${query.priority ? `[${query.priority.toUpperCase()}]` : ''} Ticket ${query.id} - ${query.name || 'Customer'}`;
+  const text = `
+New Customer Query Submitted!
+
+Ticket ID: ${query.id}
+Customer: ${query.name} (${query.email || 'N/A'}, ${query.phone || 'N/A'})
+Associated Order: ${query.order_id || 'N/A'}
+Delivery Site Address: ${query.delivery_address || 'N/A'}
+Drone Serial: ${query.drone_serial || 'N/A'}
+Category: ${query.category || 'General'}
+Priority: ${query.priority || 'Normal'}
+Callback Preference: ${query.preferred_time || query.preferred_callback || 'N/A'}
+
+Message / Query:
+${query.message || 'No description provided.'}
+
+Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
+Manage in Support Desk: http://localhost:3000/support-desk
+`.trim();
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; background: #f8fafc; padding: 20px; color: #1e293b;">
+  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+    <div style="background: #3b0080; padding: 20px; color: white;">
+      <h2 style="margin: 0; font-size: 18px;">⚡ New Incoming Customer Query</h2>
+      <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">IndoFleet Central Grievance & Support Desk</p>
+    </div>
+    <div style="padding: 24px;">
+      <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; font-size: 14px;">
+        Ticket ID: <span style="color: #3b0080; font-family: monospace;">${query.id}</span>
+        <span style="float: right; background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 11px;">${(query.priority || 'NORMAL').toUpperCase()}</span>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.8;">
+        <tr><td style="color: #64748b; width: 140px;">Customer Name:</td><td><strong>${query.name}</strong></td></tr>
+        <tr><td style="color: #64748b;">Email Address:</td><td><a href="mailto:${query.email}">${query.email}</a></td></tr>
+        <tr><td style="color: #64748b;">Phone Number:</td><td><a href="tel:${query.phone}">${query.phone}</a></td></tr>
+        <tr><td style="color: #64748b;">Order Reference:</td><td><strong style="color: #3b0080; font-family: monospace;">${query.order_id || 'Not Linked'}</strong></td></tr>
+        <tr><td style="color: #64748b;">Delivery Address:</td><td>${query.delivery_address || 'Not Provided'}</td></tr>
+        <tr><td style="color: #64748b;">Drone Serial ID:</td><td>${query.drone_serial || 'N/A'}</td></tr>
+        <tr><td style="color: #64748b;">Category:</td><td>${query.category || 'General Support'}</td></tr>
+        <tr><td style="color: #64748b;">Callback Window:</td><td>${query.preferred_time || query.preferred_callback || 'Immediate'}</td></tr>
+      </table>
+
+      <div style="background: #f8fafc; border-left: 4px solid #3b0080; padding: 14px; margin-top: 20px; border-radius: 4px;">
+        <span style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 4px;">Query Description</span>
+        <p style="margin: 0; font-size: 14px; color: #1e293b; white-space: pre-wrap;">${query.message || 'No description provided.'}</p>
+      </div>
+
+      <div style="margin-top: 24px; text-align: center;">
+        <a href="http://localhost:3000/support-desk" style="background: #3b0080; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px; display: inline-block;">
+          Open in Support Desk Console →
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`.trim();
+
+  await sendEmail({ to, subject, text, html });
+}
+
+// ── 9. Support Query: Resolution Notification to User ────────────────────────
+export async function sendQueryResolutionEmail(query: any, resolutionNotes: string, agentName: string = 'IndoFleet Support') {
+  if (!query.email) return;
+  const to = query.email;
+  const subject = `Your Support Query [${query.id}] Has Been Resolved - IndoFleet Support`;
+  const text = `
+Dear ${query.name || 'Valued Customer'},
+
+Your support inquiry (Ticket ID: ${query.id}) regarding "${query.category || 'Support Request'}" has been resolved by our operations team.
+
+Resolution & Action Taken:
+------------------------------------
+${resolutionNotes}
+------------------------------------
+
+Order Reference: ${query.order_id || 'N/A'}
+Site Address: ${query.delivery_address || 'N/A'}
+Resolved By: ${agentName}
+
+If you have any further questions, you can contact our 24/7 Operations Support:
+Phone: +91 7669478937 | Toll-Free: 1800 572 7363
+Email: connect@indowings.com
+
+Thank you for choosing IndoFleet Aerospace.
+`.trim();
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; background: #f8fafc; padding: 20px; color: #1e293b;">
+  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+    <div style="background: #059669; padding: 20px; color: white;">
+      <h2 style="margin: 0; font-size: 18px;">✅ Query Resolved: Ticket ${query.id}</h2>
+      <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.9;">IndoFleet Enterprise UAV Support Services</p>
+    </div>
+    <div style="padding: 24px;">
+      <p style="font-size: 14px; line-height: 1.6; color: #334155;">
+        Dear <strong>${query.name || 'Valued Customer'}</strong>,<br>
+        Our support operations team has reviewed and resolved your inquiry regarding <strong>${query.category || 'Flight Operations'}</strong>.
+      </p>
+
+      <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px; padding: 16px; margin: 20px 0;">
+        <span style="font-size: 11px; font-weight: 800; color: #166534; text-transform: uppercase; display: block; margin-bottom: 6px;">Official Resolution & Action Taken:</span>
+        <p style="margin: 0; font-size: 14px; color: #14532d; line-height: 1.6; white-space: pre-wrap;">${resolutionNotes}</p>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.8; margin-bottom: 20px;">
+        <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 6px 0;">Ticket Reference:</td><td style="font-family: monospace; font-weight: bold; color: #3b0080;">${query.id}</td></tr>
+        ${query.order_id ? `<tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 6px 0;">Order Reference:</td><td style="font-family: monospace; font-weight: bold;">${query.order_id}</td></tr>` : ''}
+        ${query.delivery_address ? `<tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 6px 0;">Delivery Address:</td><td>${query.delivery_address}</td></tr>` : ''}
+        <tr><td style="color: #64748b; padding: 6px 0;">Resolved By:</td><td><strong>${agentName}</strong></td></tr>
+      </table>
+
+      <div style="background: #faf5ff; border: 1px dashed #c084fc; border-radius: 10px; padding: 14px; text-align: center; margin-top: 20px;">
+        <p style="margin: 0; font-size: 12px; color: #6b21a8; font-weight: 600;">Need more assistance? Reach our 24/7 Operations Desk</p>
+        <p style="margin: 4px 0 0 0; font-size: 13px; font-weight: 800; color: #3b0080;">
+          📞 +91 7669478937 · Toll-Free: 1800 572 7363 · ✉️ connect@indowings.com
+        </p>
+      </div>
+    </div>
+    <div style="background: #f8fafc; padding: 16px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8;">
+      &copy; 2026 IndoFleet Aerospace Technologies Ltd. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>
+`.trim();
+
+  await sendEmail({ to, subject, text, html });
+}
+
+// ── 10. Direct Email Reply from Support Agent ─────────────────────────────────
+export async function sendDirectSupportEmail(to: string, subject: string, message: string, agentName: string = 'IndoFleet Support Desk') {
+  if (!to || !to.includes('@')) return;
+  const text = `
+Dear Customer,
+
+${message}
+
+------------------------------------
+${agentName}
+IndoFleet Aerospace Technologies Ltd.
+Phone: +91 7669478937 | Toll-Free: 1800 572 7363
+Email: connect@indowings.com
+`.trim();
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; background: #f8fafc; padding: 20px; color: #1e293b;">
+  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+    <div style="background: #3b0080; padding: 18px 24px; color: white;">
+      <h3 style="margin: 0; font-size: 16px;">IndoFleet Support Operations</h3>
+      <p style="margin: 2px 0 0 0; font-size: 12px; opacity: 0.85;">Direct Message from Support Officer</p>
+    </div>
+    <div style="padding: 24px;">
+      <div style="font-size: 14px; line-height: 1.7; color: #334155; white-space: pre-wrap; margin-bottom: 24px;">
+        ${message}
+      </div>
+
+      <div style="border-top: 1px solid #f1f5f9; padding-top: 16px; font-size: 12px; color: #64748b;">
+        <strong style="color: #1e293b; display: block; font-size: 13px;">${agentName}</strong>
+        Support & Operations Command Desk<br>
+        IndoFleet Aerospace Technologies Ltd.<br>
+        Direct Phone: +91 7669478937 · Toll-Free: 1800 572 7363 · Email: connect@indowings.com
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`.trim();
+
+  await sendEmail({ to, subject, text, html });
+}
+
+

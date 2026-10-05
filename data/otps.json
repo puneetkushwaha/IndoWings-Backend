@@ -1,1 +1,15 @@
-﻿{}
+{
+  "fleet@indowings.com": {
+    "otp": "967276",
+    "expiresAt": 1791216376790,
+    "name": "Rajesh Sharma",
+    "email": "fleet@indowings.com"
+  },
+  "9876543202": {
+    "otp": "476754",
+    "expiresAt": 1791216531925,
+    "name": "Vikram Malhotra",
+    "email": "dispatch@indowings.com",
+    "phone": "+919876543202"
+  }
+}
