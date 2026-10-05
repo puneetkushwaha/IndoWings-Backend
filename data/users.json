@@ -42,16 +42,5 @@
     "organization": "IndoFleet Support Operations",
     "status": "active",
     "created_at": "2026-10-05T12:00:00.000Z"
-  },
-  {
-    "id": "CLIENT-001",
-    "name": "Col. Amit Verma",
-    "email": "client@defenselogistics.in",
-    "phone": "+919876543203",
-    "role": "client",
-    "station": "Northern Airbase Depot",
-    "organization": "Defense & Aerospace Logistics",
-    "status": "active",
-    "created_at": "2026-10-05T12:00:00.000Z"
   }
 ]

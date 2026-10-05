@@ -107,17 +107,6 @@ const defaultUsers = [
     organization: 'IndoFleet Support Operations',
     status: 'active',
     created_at: new Date().toISOString()
-  },
-  {
-    id: 'CLIENT-001',
-    name: 'Col. Amit Verma',
-    email: 'client@defenselogistics.in',
-    phone: '+919876543203',
-    role: 'client',
-    station: 'Northern Airbase Depot',
-    organization: 'Defense & Aerospace Logistics',
-    status: 'active',
-    created_at: new Date().toISOString()
   }
 ];
 
