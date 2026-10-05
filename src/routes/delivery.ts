@@ -37,7 +37,45 @@ try {
   console.warn('[payment] Razorpay init warning:', msg);
 }
 
-// Auth: Send OTP verification code
+// Auth: Direct Email + Password Login (Default password: 123 123)
+router.post('/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    res.status(400).json({ error: 'Please enter your registered email address and password' });
+    return;
+  }
+
+  const cleanEmail = email.toLowerCase().trim();
+  const cleanPass = password.toString().replace(/\s+/g, '');
+
+  const user = fileDB.findUserByEmail(cleanEmail);
+  if (!user) {
+    res.status(403).json({
+      error: 'Access Denied: Account not found. Please contact Administrator for ID provisioning.'
+    });
+    return;
+  }
+
+  if (cleanPass !== '123123') {
+    res.status(401).json({ error: 'Invalid password. Please check and retry.' });
+    return;
+  }
+
+  console.log(`[auth] User authenticated via password: ${user.name} (${cleanEmail}) [Role: ${user.role}]`);
+
+  const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'Localhost';
+  sendLoginAlertEmail(user.email, user.name, user.role, clientIp).catch(err => console.error('Login alert error:', err));
+
+  const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
+  res.json({
+    success: true,
+    message: 'Login successful',
+    token,
+    user
+  });
+});
+
+// Auth: Send OTP verification code (Phone SMS OTP)
 router.post('/auth/send-otp', async (req, res) => {
   const { phone, email } = req.body;
   if (!phone && !email) {
