@@ -37,18 +37,22 @@ try {
   console.warn('[payment] Razorpay init warning:', msg);
 }
 
-// Auth: Direct Email + Password Login (Default password: 123 123)
+// Auth: Direct Email or Phone + Password Login (Default password: 123 123)
 router.post('/auth/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    res.status(400).json({ error: 'Please enter your registered email address and password' });
+  const { email, phone, password } = req.body;
+  if ((!email && !phone) || !password) {
+    res.status(400).json({ error: 'Please enter your registered credentials and password' });
     return;
   }
 
-  const cleanEmail = email.toLowerCase().trim();
+  const cleanEmail = email ? email.toLowerCase().trim() : '';
+  const cleanPhone = phone ? phone.replace(/[^0-9]/g, '').slice(-10) : '';
   const cleanPass = password.toString().replace(/\s+/g, '');
 
-  const user = fileDB.findUserByEmail(cleanEmail);
+  let user = null;
+  if (cleanEmail) user = fileDB.findUserByEmail(cleanEmail);
+  if (!user && cleanPhone) user = fileDB.findUserByPhone(cleanPhone);
+
   if (!user) {
     res.status(403).json({
       error: 'Access Denied: Account not found. Please contact Administrator for ID provisioning.'
@@ -61,10 +65,12 @@ router.post('/auth/login', async (req, res) => {
     return;
   }
 
-  console.log(`[auth] User authenticated via password: ${user.name} (${cleanEmail}) [Role: ${user.role}]`);
+  console.log(`[auth] User authenticated via password: ${user.name} (${user.email || user.phone}) [Role: ${user.role}]`);
 
   const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'Localhost';
-  sendLoginAlertEmail(user.email, user.name, user.role, clientIp).catch(err => console.error('Login alert error:', err));
+  if (user.email) {
+    sendLoginAlertEmail(user.email, user.name, user.role, clientIp).catch(err => console.error('Login alert error:', err));
+  }
 
   const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
   res.json({
@@ -72,6 +78,39 @@ router.post('/auth/login', async (req, res) => {
     message: 'Login successful',
     token,
     user
+  });
+});
+
+// Auth: Verify whether user account exists before showing password / OTP step
+router.post('/auth/check-user', async (req, res) => {
+  const { email, phone } = req.body;
+  const cleanEmail = email ? email.toLowerCase().trim() : '';
+  const cleanPhone = phone ? phone.replace(/[^0-9]/g, '').slice(-10) : '';
+
+  if (!cleanEmail && !cleanPhone) {
+    res.status(400).json({ error: 'Please enter your email or mobile number' });
+    return;
+  }
+
+  let user = null;
+  if (cleanEmail) user = fileDB.findUserByEmail(cleanEmail);
+  if (!user && cleanPhone) user = fileDB.findUserByPhone(cleanPhone);
+
+  if (!user) {
+    res.status(404).json({
+      exists: false,
+      error: 'Access Denied: This account is not registered. Please contact your IndoWings Administrator for ID provisioning.'
+    });
+    return;
+  }
+
+  res.json({
+    exists: true,
+    name: user.name,
+    role: user.role,
+    email: user.email,
+    phone: user.phone,
+    station: user.station
   });
 });
 
