@@ -415,8 +415,7 @@ router.post('/admin/request-provision-otp', async (req, res) => {
   res.json({
     success: true,
     message: `Security OTP dispatched to Admin via ${channel === 'phone' ? 'SMS' : 'Email'} (${target})`,
-    target,
-    debug_otp: otp
+    target
   });
 });
 
@@ -440,7 +439,7 @@ router.post('/admin/provision-user', async (req, res) => {
   }
 
   const verification = fileDB.verifyOTP(adminTarget || 'puneet@indowings.com', otp);
-  if (!verification.valid && otp !== '123456' && otp !== '123123') {
+  if (!verification.valid) {
     res.status(400).json({ error: verification.reason || 'Invalid or expired Admin Security OTP' });
     return;
   }
@@ -463,7 +462,7 @@ router.post('/admin/provision-user', async (req, res) => {
   }
 
   const rolePrefix = role === 'admin' ? 'ADM' : role === 'fleet_manager' ? 'FLT' : role === 'dispatcher' ? 'DSP' : role === 'support' ? 'SUPP' : 'CLI';
-  const tempPass = (temporaryPassword || '123123').trim();
+  const tempPass = (temporaryPassword || crypto.randomBytes(4).toString('hex')).trim();
 
   const newUser = {
     id: `IW-${rolePrefix}-${Date.now().toString().slice(-4)}`,
@@ -501,7 +500,7 @@ router.post('/auth/first-time-change-password', async (req, res) => {
   }
 
   const verification = fileDB.verifyOTP(target, otp);
-  if (!verification.valid && otp !== '123456' && otp !== '123123') {
+  if (!verification.valid) {
     res.status(400).json({ error: verification.reason || 'Invalid or expired OTP code' });
     return;
   }
