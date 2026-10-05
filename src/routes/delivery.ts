@@ -9,7 +9,8 @@ import {
   sendOrderPlacedEmail, sendOrderStatusEmail,
   sendExpertRequestCreatedEmail, sendExpertRequestStatusEmail,
   sendFeedbackInvitationEmail,
-  sendSupportQueryAlertToTeam, sendQueryResolutionEmail, sendDirectSupportEmail
+  sendSupportQueryAlertToTeam, sendQueryResolutionEmail, sendDirectSupportEmail,
+  sendUserProvisionedEmail
 } from '../emailService.js';
 
 const router = Router();
@@ -482,7 +483,14 @@ router.post('/admin/provision-user', async (req, res) => {
   fileDB.addUser(newUser);
   console.log(`[admin] User ${newUser.name} provisioned with ID ${newUser.id} (Role: ${newUser.role})`);
 
-  sendWelcomeEmail(cleanEmail, newUser.name, newUser.role).catch(() => {});
+  sendUserProvisionedEmail({
+    to: cleanEmail,
+    name: newUser.name,
+    userId: newUser.id,
+    role: newUser.role,
+    temporaryPassword: tempPass,
+    loginUrl: 'http://localhost:3000/login'
+  }).catch((err) => console.error('[mail] Failed to send user provisioning email:', err));
 
   res.status(201).json({
     success: true,
@@ -599,7 +607,7 @@ router.post('/drones/bulk', (req, res) => {
       };
     });
   } else if (count && Number(count) > 0) {
-    const qty = Math.min(Number(count), 100);
+    const qty = Math.min(Number(count), 5000);
     const pfx = prefix || 'IW-UAV-BATCH';
     const mdl = model || 'Cyberone Pro';
     const city = current_city || 'Noida Sector 62 Plant';
@@ -611,7 +619,7 @@ router.post('/drones/bulk', (req, res) => {
         model: mdl,
         status: 'idle',
         qc_status: 'passed',
-        qc_notes: 'Bulk provisioned batch - Ready for corridor flight',
+        qc_notes: 'Bulk manufactured unit - QC passed & ready for client delivery',
         battery: 100,
         speed_kmh: 0,
         altitude_m: 0,
@@ -866,81 +874,72 @@ router.post('/orders', (req, res) => {
     delivery_notes
   } = req.body;
 
-  if (!pickup_address || !drop_address || !package_type) {
-    res.status(400).json({ error: 'Pickup address, drop address, and package type are required' });
+  const clientName = req.body.client_name || req.body.customer_name || user?.name || 'Enterprise Client';
+  const dropAddress = req.body.destination_address || req.body.drop_address;
+  const droneModel = req.body.drone_model || req.body.drones_shipped || 'Cyberone Pro';
+  const unitsCount = Number(req.body.units_count || req.body.weight_kg) || 1;
+  const carrier = req.body.carrier || req.body.package_type || 'IndoWings Secured Fleet Van';
+  const pickupAddress = req.body.pickup_address || 'IndoWings Manufacturing Plant, Sector 62, Noida';
+
+  if (!dropAddress) {
+    res.status(400).json({ error: 'Destination address / client receiving facility is required' });
     return;
   }
 
   const now = new Date();
   const currentYear = now.getFullYear();
 
-  // Order number of the day (e.g. INW-2026-001)
-  const todayStr = now.toISOString().slice(0, 10);
+  // Consignment / Dispatch number (e.g. DSP-2026-001)
   const existingOrders = fileDB.getOrders();
-  const todayOrders = existingOrders.filter(o => {
-    if (!o.created_at) return false;
-    try {
-      return new Date(o.created_at).toISOString().slice(0, 10) === todayStr;
-    } catch {
-      return false;
-    }
-  });
+  let orderOfTheDay = existingOrders.length + 1;
+  let orderId = `DSP-${currentYear}-${String(orderOfTheDay).padStart(3, '0')}`;
 
-  let orderOfTheDay = todayOrders.length + 1;
-  let orderId = `INW-${currentYear}-${String(orderOfTheDay).padStart(3, '0')}`;
-
-  // Ensure unique ID
   while (existingOrders.some(o => o.id.toUpperCase() === orderId.toUpperCase())) {
     orderOfTheDay++;
-    orderId = `INW-${currentYear}-${String(orderOfTheDay).padStart(3, '0')}`;
+    orderId = `DSP-${currentYear}-${String(orderOfTheDay).padStart(3, '0')}`;
   }
 
-  // Find idle drone
-  const fleet = fileDB.getFleet();
-  const availableDrone = fleet.find(d => d.status === 'idle') || fleet[0];
-
-  if (availableDrone) {
-    fileDB.updateDrone(availableDrone.id, {
-      status: 'en-route',
-      assigned_order: orderId
-    });
-  }
-
-  const estimatedDelivery = new Date(now.getTime() + 24 * 60000); // 24 mins avg
+  const challanNo = `CHL-${currentYear}-${String(Math.floor(1000 + Math.random() * 9000))}`;
+  const estimatedDelivery = new Date(now.getTime() + 48 * 3600 * 1000); // 48 hours transit avg
 
   const newOrder = {
     id: orderId,
+    challan_number: challanNo,
     creator_id: user?.id || null,
-    customer_name: customer_name || user?.name || 'Customer',
+    customer_name: clientName,
+    client_name: clientName,
     customer_email: customer_email || user?.email || '',
     customer_phone: customer_phone || user?.phone || '',
-    recipient_name: recipient_name || null,
-    recipient_phone: recipient_phone || null,
+    recipient_name: recipient_name || clientName,
+    recipient_phone: recipient_phone || customer_phone || '',
     is_for_someone_else: Boolean(is_for_someone_else),
     delivery_notes: delivery_notes || '',
-    pickup_address,
-    drop_address,
-    package_type,
-    weight_kg: Number(weight_kg) || 1,
-    fare_inr: Number(fare_inr) || 149,
+    pickup_address: pickupAddress,
+    drop_address: dropAddress,
+    destination_address: dropAddress,
+    package_type: `${unitsCount}x ${droneModel} (${carrier})`,
+    drones_shipped: `${unitsCount}x ${droneModel}`,
+    drone_model: droneModel,
+    units_count: unitsCount,
+    carrier: carrier,
+    weight_kg: Number(weight_kg) || (unitsCount * 12),
+    fare_inr: Number(fare_inr) || (unitsCount * 450000),
     payment_id: payment_id || null,
-    payment_status: payment_status || (payment_method === 'cod' ? 'pending_cod' : 'paid'),
-    payment_method: payment_method || 'online',
-    aerial_distance_km: Number(aerial_distance_km) || 14.2,
+    payment_status: payment_status || 'cleared',
+    payment_method: payment_method || 'invoice',
+    aerial_distance_km: Number(aerial_distance_km) || 120,
     flight_duration_mins: Number(flight_duration_mins) || 24,
     status: 'assigned',
-    drone_id: availableDrone ? availableDrone.id : null,
-    drone_model: availableDrone ? availableDrone.model : 'Cyberone Max',
+    drone_id: `${unitsCount} Units (${droneModel})`,
     scheduled_time: scheduled_time || null,
     estimated_delivery: estimatedDelivery.toISOString(),
     created_at: now.toISOString(),
     timeline: [
-      { step: 'Order Placed', time: now.toISOString(), done: true },
-      { step: 'Drone Assigned', time: now.toISOString(), done: true },
-      { step: 'Drone Taking Off', time: null, done: false },
-      { step: 'In-Flight', time: null, done: false },
-      { step: 'Approaching Drop Point', time: null, done: false },
-      { step: 'Delivered', time: null, done: false },
+      { step: 'Order Placed & QC Cleared', time: now.toISOString(), done: true },
+      { step: 'Manufactured Units Boxed & Sealed', time: now.toISOString(), done: true },
+      { step: 'Dispatched via ' + carrier, time: now.toISOString(), done: true },
+      { step: 'In Transit to Client Facility', time: null, done: false },
+      { step: 'Delivered & Technical Acceptance Signed', time: null, done: false },
     ]
   };
 

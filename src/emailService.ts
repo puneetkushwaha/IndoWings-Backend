@@ -137,16 +137,129 @@ Account Details:
 - Registered Mobile: ${phone || 'N/A'}
 - Platform: IndoWings Aerial Logistics (DGCA Certified)
 
-You can now dispatch aerial courier deliveries across Delhi NCR in under 30 minutes.
-Place your orders here: http://localhost:3000/order
-
 Best regards,
-IndoWings Flight Operations Team
+IndoWings Operations Team
 Sector 62, Noida, Uttar Pradesh
-Helpline: 1800 572 7363
 `.trim();
 
   await sendEmail({ to, subject, text });
+}
+
+// ── 1B. Enterprise Team Member Account Provisioned Email ─────────────────────
+export async function sendUserProvisionedEmail({
+  to,
+  name,
+  userId,
+  role,
+  temporaryPassword,
+  loginUrl
+}: {
+  to: string;
+  name: string;
+  userId: string;
+  role: string;
+  temporaryPassword: string;
+  loginUrl?: string;
+}) {
+  const roleLabels: Record<string, string> = {
+    admin: 'Super Admin',
+    fleet_manager: 'Fleet & QC Manager',
+    dispatcher: 'Drone Logistics Dispatcher',
+    support: 'Support Desk Officer'
+  };
+  const roleName = roleLabels[role] || role.toUpperCase();
+  const url = loginUrl || 'http://localhost:3000/login';
+
+  const subject = `IndoWings Account Provisioned: Credentials & Next Steps for ${name}`;
+  const text = `
+Hello ${name},
+
+Your official IndoWings operations account has been provisioned by the Administrator.
+
+Your Login Credentials:
+--------------------------------------------------
+User ID:            ${userId}
+Registered Email:   ${to}
+Assigned Role:      ${roleName}
+Temporary Password: ${temporaryPassword}
+Login Portal URL:   ${url}
+--------------------------------------------------
+
+NEXT STEPS TO ACTIVATE YOUR ACCOUNT (MANDATORY):
+1. Open the Login Portal: ${url}
+2. Select "Email Access", enter your email (${to}) and click Continue.
+3. Enter your temporary password: ${temporaryPassword}
+4. Choose whether to receive a 6-digit Security OTP on your Email or Mobile Phone.
+5. Enter the OTP code received and set your permanent secure password.
+6. Once saved, you will gain direct access to your ${roleName} operations workspace.
+
+For any assistance, contact IndoWings Support at connect@indowings.com.
+
+Best regards,
+IndoWings Aerospace Operations
+Sector 62, Noida, Uttar Pradesh
+`.trim();
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #3b0080; margin: 0; font-size: 24px; font-weight: 900;">INDOWINGS AEROSPACE</h1>
+        <p style="color: #64748b; font-size: 13px; margin: 4px 0 0;">Enterprise Operations Gateway</p>
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+        <h2 style="color: #0f172a; font-size: 18px; margin-top: 0; margin-bottom: 12px;">Hello ${name},</h2>
+        <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 16px;">
+          Your official IndoWings operations account has been provisioned by Administrator Puneet Kushwaha.
+        </p>
+
+        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+          <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: bold; margin: 0 0 12px;">Account Credentials</p>
+          <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; color: #64748b; font-weight: 600; width: 140px;">User ID:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-family: monospace; font-weight: bold;">${userId}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b; font-weight: 600;">Registered Email:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">${to}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b; font-weight: 600;">Assigned Role:</td>
+              <td style="padding: 6px 0; color: #3b0080; font-weight: bold;">${roleName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b; font-weight: 600;">Temporary Pass:</td>
+              <td style="padding: 6px 0; color: #b45309; font-family: monospace; font-weight: bold;">${temporaryPassword}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${url}" style="background: #3b0080; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: bold; font-size: 14px; display: inline-block;">
+            Open Login Portal &rarr;
+          </a>
+        </div>
+
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 16px;">
+          <p style="font-size: 12px; font-weight: bold; color: #0f172a; margin: 0 0 8px;">Next Steps to Activate Your Workspace:</p>
+          <ol style="font-size: 12px; color: #475569; padding-left: 18px; margin: 0; line-height: 1.6;">
+            <li>Click the <strong>Open Login Portal</strong> button above.</li>
+            <li>Enter your corporate email (<strong>${to}</strong>) and temporary password.</li>
+            <li>Choose to receive a 6-digit OTP via Email or Mobile SMS to verify your identity.</li>
+            <li>Set your permanent personal password.</li>
+            <li>Access your dedicated operations workspace.</li>
+          </ol>
+        </div>
+      </div>
+
+      <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+        &copy; 2026 IndoWings Aerospace &bull; Sector 62, Noida, Uttar Pradesh
+      </p>
+    </div>
+  `;
+
+  await sendEmail({ to, subject, text, html });
 }
 
 // ── 2. Login Security Alert Email ───────────────────────────────────────────
