@@ -2,6 +2,19 @@
 
 Autonomous drone dispatch, live flight telemetry simulation, and fleet management API engine built with Node.js, Express, and TypeScript for the IndoWings Autonomous Drone Delivery Network (DGCA Green Corridor compliant).
 
+---
+
+## 📂 Files Sitemap & Setup Guide (Kahan Kya Milega)
+
+| File Name / Purpose | Exact Repository Path | Description |
+| :--- | :--- | :--- |
+| **Firebase Admin Template** | `firebase_admin_key.example.json` | Firebase Service Account Key JSON template for Node.js backend FCM Push Notifications |
+| **Active Service Account Key** | `firebase_admin_key.json` | Local active Firebase Service Account JSON file (copy from `firebase_admin_key.example.json` or Desktop `Something/firebase_admin_key.json`) |
+| **Environment Template** | `.env.example` | Template file containing all active Firebase, Supabase, JWT, Admin, SMTP, & Razorpay credentials |
+| **Active Environment File** | `.env` | Local active environment variables file (copy from `.env.example`) |
+
+---
+
 ## Environment Variables (.env & .env.example)
 
 Create a `.env` file in the root of the `server` directory with the following ChotU Firebase credentials:
@@ -40,9 +53,7 @@ FIREBASE_PRIVATE_KEY_PATH=./firebase_admin_key.json
 FAST2SMS_API_KEY=
 ```
 
-## Firebase Admin SDK Key Location
-The full `firebase_admin_key.json` file for Node.js backend is committed to:
-- `./firebase_admin_key.json`
+---
 
 ## Features
 - **Fleet Management**: Live telemetry, battery health, payload capacities, status monitoring.
