@@ -31,6 +31,11 @@ SMTP_PASS=gnjbwticrobmnshz
 SERVICEHUB_SUPABASE_URL=https://tpypyxuvmtzhoncasiln.supabase.co
 SERVICEHUB_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRweXB5eHV2bXR6aG9uY2FzaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzMjUwOTgsImV4cCI6MjA5ODkwMTA5OH0.LKnoEJrdlg_KZv8UMmA381rseSH20edvls1urlafwHw
 
+# Firebase Project Config (indofleet-e3ef8)
+FIREBASE_PROJECT_ID=indofleet-e3ef8
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
+
 # Fast2SMS Gateway Configuration
 FAST2SMS_API_KEY=
 ```
@@ -38,7 +43,7 @@ FAST2SMS_API_KEY=
 ## Features
 - **Fleet Management**: Live telemetry, battery health, payload capacities, status monitoring.
 - **Flight Corridors & Order Dispatch**: Automated drone routing, ETA calculation, and dynamic flight phase updates.
-- **Dual OTP Verification**: SMS OTP via Twilio / Supabase and Email OTP via Resend / Gmail SMTP.
+- **Dual OTP Verification**: SMS OTP via Twilio / Supabase / Firebase Phone Auth and Email OTP via Resend / Gmail SMTP.
 - **AI Copilot & Tracking Bot**: Integrated intelligent chatbot endpoints for order lookup, name verification, and live telemetry HUD.
 - **Admin & Analytics**: Order overview, flight statistics, feedback, and customer support desks.
 
@@ -46,8 +51,8 @@ FAST2SMS_API_KEY=
 - **Runtime**: Node.js & Express
 - **Language**: TypeScript
 - **Database**: File-based JSON store with real-time state persistence
-- **Authentication**: JWT & OTP verification
-- **Notifications**: Resend API, Gmail SMTP, Supabase/Twilio SMS gateway
+- **Authentication**: JWT & OTP verification (Firebase / Supabase)
+- **Notifications**: Resend API, Gmail SMTP, Firebase FCM Push
 
 ## Getting Started
 
