@@ -2,9 +2,9 @@
 
 Autonomous drone dispatch, live flight telemetry simulation, and fleet management API engine built with Node.js, Express, and TypeScript for the IndoWings Autonomous Drone Delivery Network (DGCA Green Corridor compliant).
 
-## Environment Variables (.env)
+## Environment Variables (.env & .env.example)
 
-Create a `.env` file in the root of the `server` directory with the following variables:
+Create a `.env` file in the root of the `server` directory with the following ChotU Firebase credentials:
 
 ```env
 PORT=5000
@@ -31,14 +31,18 @@ SMTP_PASS=gnjbwticrobmnshz
 SERVICEHUB_SUPABASE_URL=https://tpypyxuvmtzhoncasiln.supabase.co
 SERVICEHUB_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRweXB5eHV2bXR6aG9uY2FzaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzMjUwOTgsImV4cCI6MjA5ODkwMTA5OH0.LKnoEJrdlg_KZv8UMmA381rseSH20edvls1urlafwHw
 
-# Firebase Project Config (indofleet-e3ef8)
-FIREBASE_PROJECT_ID=indofleet-e3ef8
-FIREBASE_CLIENT_EMAIL=
-FIREBASE_PRIVATE_KEY=
+# Firebase Admin SDK Credentials - ChotU (chotu-4d1e0)
+FIREBASE_PROJECT_ID=chotu-4d1e0
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@chotu-4d1e0.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY_PATH=./firebase_admin_key.json
 
 # Fast2SMS Gateway Configuration
 FAST2SMS_API_KEY=
 ```
+
+## Firebase Admin SDK Key Location
+The full `firebase_admin_key.json` file for Node.js backend is committed to:
+- `./firebase_admin_key.json`
 
 ## Features
 - **Fleet Management**: Live telemetry, battery health, payload capacities, status monitoring.
